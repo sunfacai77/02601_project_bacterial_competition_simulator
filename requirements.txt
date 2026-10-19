@@ -1,0 +1,5 @@
+# Rendering and video export follow HW1 Boids / HW2 Barnes-Hut.
+numpy
+pygame
+imageio[ffmpeg]
+pytest
