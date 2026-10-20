@@ -15,4 +15,8 @@ def simulate_bacteria(
     state. No snapshot may share mutable agents or vectors with another.
     Snapshot i represents time i * time_step. Initial state generation is separate.
     """
-    raise NotImplementedError("Implement the simulation driver.")
+    result = [initial_environment]
+    for i in range(0, num_gens):
+        result.append(update_environment(result[i], time_step))
+
+    return result
