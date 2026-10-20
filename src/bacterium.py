@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
@@ -21,74 +23,205 @@ class Bacterium:
     bacteria_type and alive are additional state for bacterial competition.
     """
 
+    # basic para, we do not need acceleration here (see bacteria notes)
     position: OrderedPair = field(default_factory=OrderedPair)
     velocity: OrderedPair = field(default_factory=OrderedPair)
-    acceleration: OrderedPair = field(default_factory=OrderedPair)
-    bacteria_type: BacteriaType = "target"
+    # movement direction in radians. sample uniformly from [0, 2*pi) during initialization
+    orientation: float = 0.0
+    
+    
+    bacteria_type: BacteriaType | None = None
+    
+    # HP value. every hit will reduce the target's HP by some random value. 
+    health: float | None = None
+    # die when HP <= 0
     alive: bool = True
+    
+    # energy is associated with environment setting. assume every bacterium has the same energy recovery rate
+    energy: float | None = None
+    energy_recovery_rate: float | None = None # can be set to constant
+    
+    # growth rate is for energy distribution. it will change when energy is high or low
+    growth_rate: float | None = None
+    # when growth stage reaches growth threshold, the bacterium will divide into two
+    growth_stage: float | None = None
+    growth_threshold: float | None = None # can be set to constant
+    
+    # during division, there will be a period of time when the bacterium is not able to move or attack. 
+    is_division: bool = False
+    division_time: float | None = None # can be set to constant
+
+    
+    # may be used
+    radius: float | None = None
 
 
-def update_acceleration(current_environment: Environment, i: int) -> OrderedPair:
+
+def update_orientation(
+    b: Bacterium,
+    mean_run_time: float,
+    time_step: float,
+    rng: random.Random | None = None,
+) -> float:
     """
-    Compute the next acceleration of bacteria[i]. Author/reviewer: TODO.
+    Update the movement direction of a bacterium.
 
-    Read neighbors from current_environment, as update_acceleration reads
-    current_sky in HW1. The bacterial movement rule is still to be decided;
-    zero acceleration is sufficient for an initial constant-velocity demo.
+    Args:
+        b: A Bacterium object.
+        mean_run_time: The mean time before choosing a new direction.
+        time_step: The time step. Use a value much smaller than mean_run_time.
+        rng: An optional random generator for repeatable movement.
+    Returns:
+        The updated direction in radians. Dead or dividing bacteria keep
+        their current direction. Leave b unchanged; the caller assigns the result.
+    Raises:
+        ValueError: If mean_run_time is not positive or time_step is negative.
     """
-    raise NotImplementedError("Implement bacterial acceleration.")
+    if not b.alive or (b.health is not None and b.health <= 0) or b.is_division:
+        return b.orientation
+
+    if mean_run_time <= 0:
+        raise ValueError("Mean run time must be positive.")
+    if time_step < 0:
+        raise ValueError("Time step must be nonnegative.")
+    if time_step == 0:
+        return b.orientation
+
+    generator = rng if rng is not None else random
+
+    # probability of turning in one time step: 1 - exp(-time_step / mean_run_time)
+    turning_probability = -math.expm1(-time_step / mean_run_time)
+    if generator.random() < turning_probability:
+        return generator.uniform(0.0, 2 * math.pi)
+
+    return b.orientation
 
 
 def update_velocity(
     b: Bacterium,
-    old_acceleration: OrderedPair,
+    motility_speed: float,
     max_bacterium_speed: float,
-    time_step: float,
 ) -> OrderedPair:
     """
-    Return velocity using the HW1 averaged-acceleration rule. Author/reviewer: TODO.
+    Update the velocity of a bacterium.
 
-    Use b.velocity + 0.5 * (old_acceleration + b.acceleration) * time_step,
-    then limit_speed. b.acceleration is the newly computed acceleration.
-    Do not mutate b or its vectors; the caller assigns the result.
+    Args:
+        b: A Bacterium object.
+        motility_speed: The constant movement speed, shared by all moving bacteria.
+        max_bacterium_speed: The maximum allowed speed of the bacterium.
+    Returns:
+        An OrderedPair representing the velocity in the updated direction,
+        limited to max_bacterium_speed. Dead or dividing bacteria return zero velocity.
+    Raises:
+        ValueError: If motility_speed or max_bacterium_speed is negative.
+
+    Assign update_orientation's result to b.orientation before calling this function.
+    Set motility_speed at or below max_bacterium_speed. Leave b and its vectors
+    unchanged; the caller assigns the result.
     """
-    raise NotImplementedError("Implement the velocity update.")
+    if not b.alive or (b.health is not None and b.health <= 0) or b.is_division:
+        return OrderedPair(0.0, 0.0)
+
+    if motility_speed < 0:
+        raise ValueError("Motility speed must be nonnegative.")
+
+    # here add orientation!
+    new_x = motility_speed * math.cos(b.orientation)
+    new_y = motility_speed * math.sin(b.orientation)
+
+    return limit_speed(OrderedPair(new_x, new_y), max_bacterium_speed)
 
 
 def update_position(
     b: Bacterium,
-    old_acceleration: OrderedPair,
-    old_velocity: OrderedPair,
     environment_width: float,
     time_step: float,
 ) -> OrderedPair:
     """
-    Return position with HW1 wrap-around boundaries. Author/reviewer: TODO.
+    Update the position of a bacterium.
 
-    Use b.position + old_velocity * time_step
-    + 0.5 * old_acceleration * time_step**2, independently for x and y.
-    Wrap each coordinate into [0, environment_width], including overshoots
-    larger than one width. Leave b and its vectors unchanged.
+    Args:
+        b: A Bacterium object.
+        environment_width: The width of the environment (used for wrap-around behavior).
+        time_step: The time step over which to update the position.
+    Returns:
+        An OrderedPair representing the updated position of the bacterium after
+        time_step seconds, with wrap-around at the environment boundaries.
+        Dead or dividing bacteria remain at their current position.
+    Raises:
+        ValueError: If environment_width is not positive or time_step is negative.
+
+    Assign update_velocity's result to b.velocity before calling this function.
+    Leave b and its vectors unchanged; the caller assigns the result.
     """
-    raise NotImplementedError("Implement the position update and wrap-around.")
+    if not b.alive or (b.health is not None and b.health <= 0) or b.is_division:
+        return OrderedPair(b.position.x, b.position.y)
+
+    if environment_width <= 0:
+        raise ValueError("Environment width must be positive.")
+    if time_step < 0:
+        raise ValueError("Time step must be nonnegative.")
+
+    # use the updated velocity and wrap coordinates into [0, environment_width)
+    # because v is already associated with orientation, we can directly use it to update position
+    new_x = (b.position.x + b.velocity.x * time_step) % environment_width
+    new_y = (b.position.y + b.velocity.y * time_step) % environment_width
+
+    return OrderedPair(new_x, new_y)
 
 
 def limit_speed(vel: OrderedPair, max_speed: float) -> OrderedPair:
     """
-    Return a vector limited to max_speed without changing vel. Author/reviewer: TODO.
+    Limit the speed of a bacterium.
+
+    Args:
+        max_speed: The maximum allowed speed.
+        vel: An OrderedPair representing the velocity vector.
+    Returns:
+        An OrderedPair representing the velocity after limiting its
+        magnitude to max_speed, if necessary. Leave vel unchanged.
+    Raises:
+        ValueError: If max_speed is negative.
     """
-    raise NotImplementedError("Implement the speed limit.")
+    if max_speed < 0:
+        raise ValueError("Maximum speed must be nonnegative.")
+
+    s = math.sqrt(vel.x * vel.x + vel.y * vel.y)
+    if s > max_speed:
+        scale = max_speed / s
+        return OrderedPair(vel.x * scale, vel.y * scale)
+
+    return OrderedPair(vel.x, vel.y)
 
 
 def sum_vectors(vectors: list[OrderedPair]) -> OrderedPair:
     """
-    Return the sum of 2-D vectors, as in HW1. Author/reviewer: TODO.
+    Sum multiple vectors.
+
+    Args:
+        vectors: A list of OrderedPair vectors.
+    Returns:
+        An OrderedPair representing the sum of all vectors in the list.
     """
-    raise NotImplementedError("Implement vector summation.")
+    sum_x = 0.0
+    sum_y = 0.0
+
+    for vector in vectors:
+        sum_x += vector.x
+        sum_y += vector.y
+
+    return OrderedPair(sum_x, sum_y)
 
 
 def distance(p0: OrderedPair, p1: OrderedPair) -> float:
     """
-    Return Euclidean distance between two points, as in HW1. Author/reviewer: TODO.
+    Compute the Euclidean distance between two points in 2D space.
+    Input:
+        p0 (OrderedPair): The first point, with x and y coordinates.
+        p1 (OrderedPair): The second point, with x and y coordinates.
+    Output:
+        float: The Euclidean distance between p0 and p1.
     """
-    raise NotImplementedError("Implement the distance calculation.")
+    dx = p0.x - p1.x
+    dy = p0.y - p1.y
+    return math.sqrt(dx * dx + dy * dy)
