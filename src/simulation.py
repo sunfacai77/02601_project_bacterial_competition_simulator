@@ -1,5 +1,5 @@
 from .environment import Environment
-
+from environment import update_environment
 
 def simulate_bacteria(
     initial_environment: Environment,
