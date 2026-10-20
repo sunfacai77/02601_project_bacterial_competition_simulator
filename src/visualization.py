@@ -5,9 +5,8 @@ from typing import TYPE_CHECKING
 from .bacterium import Bacterium
 from .environment import Environment
 
-if TYPE_CHECKING:
-    import numpy as np
-    import pygame
+import numpy as np
+import pygame
 
 
 def animate_system(
