@@ -13,7 +13,6 @@ def main() -> None:
     width = 2000.0
     max_bacterium_speed = 120.0
     proximity = 300.0
-    initial_velocity_range = 60.0
     num_gens = 200
     time_step = 0.1
     canvas_width = 600
@@ -23,6 +22,8 @@ def main() -> None:
     num_attackers = 25
     num_targets = 25
     contact_distance = 10.0
+    motility_speed = 80
+    mean_run_time = 1.0
 
     initial_environment = initialize_environment(
         num_attackers=num_attackers,
@@ -31,11 +32,28 @@ def main() -> None:
         max_bacterium_speed=max_bacterium_speed,
         proximity=proximity,
         contact_distance=contact_distance,
-        initial_velocity_range=initial_velocity_range,
+        mean_run_time=mean_run_time,
+        motility_speed=motility_speed,
         seed=42,
     )
     time_points = simulate_bacteria(initial_environment, num_gens, time_step)
     images = animate_system(time_points, canvas_width, drawing_frequency)
+
+    # Count living and dead bacteria in the final snapshot
+    final_environment = time_points[-1]
+
+    dead_bacteria = 0
+    alive_bacteria = 0
+
+    for bacterium in final_environment.bacteria:
+        if bacterium.alive:
+            alive_bacteria += 1
+        else:
+            dead_bacteria += 1
+            
+    print(f"Total bacteria: {len(final_environment.bacteria)}")
+    print(f"Alive bacteria: {alive_bacteria}")
+    print(f"Dead bacteria: {dead_bacteria}")
 
     # Same video-export step as HW1, using the rendered RGB arrays.
     import imageio.v2 as imageio
