@@ -21,7 +21,15 @@ def animate_system(
     Return RGB arrays of shape (canvas_width, canvas_width, 3) for imageio.
     Render saved snapshots without advancing or mutating the simulation.
     """
-    raise NotImplementedError("Implement snapshot animation.")
+
+    images: list[np.ndarray] = []
+
+    for i, environment in enumerate(time_points):
+        if i % drawing_frequency == 0:
+            frame = draw_to_canvas(environment, canvas_width)
+            images.append(frame)
+
+    return images
 
 
 def draw_to_canvas(environment: Environment, canvas_width: int) -> np.ndarray:
@@ -31,7 +39,21 @@ def draw_to_canvas(environment: Environment, canvas_width: int) -> np.ndarray:
     Scale coordinates by canvas_width / environment.width. Return the RGB
     array with axes ordered (height, width, channels), matching HW1 output.
     """
-    raise NotImplementedError("Implement a single frame.")
+    # Create a square canvas with a white background.
+    surface = pygame.Surface((canvas_width, canvas_width))
+    surface.fill((255, 255, 255))
+
+    # Draw each bacterium in the environment.
+    for bacterium in environment.bacteria:
+        draw_bacterium(
+            surface,
+            bacterium,
+            environment.width,
+            canvas_width,
+        )
+
+    # Convert to NumPy array (swap axes for imageio compatibility)
+    return pygame.surfarray.array3d(surface).swapaxes(0, 1)
 
 
 def draw_bacterium(
@@ -46,4 +68,22 @@ def draw_bacterium(
     Corresponds to draw_boid in HW1. Start with circles for attackers and
     targets rather than bird triangles; drawing size is only a display choice.
     """
-    raise NotImplementedError("Implement bacterium drawing.")
+
+    # Skip dead bacteria.
+    if not bacterium.alive:
+        return
+
+    # Choose color based on bacteria type.
+    if bacterium.bacteria_type == "attacker":
+        color = (255, 80, 80)       # Red
+    else:
+        color = (80, 200, 120)      # Green
+
+    # Convert environment coordinates to canvas coordinates.
+    scale = canvas_width / environment_width
+    x = round(bacterium.position.x * scale)
+    y = round(bacterium.position.y * scale)
+
+    radius = 4
+
+    pygame.draw.circle(surface, color, (x, y), radius)
