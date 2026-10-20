@@ -55,6 +55,7 @@ def draw_to_canvas(environment: Environment, canvas_width: int) -> np.ndarray:
     return pygame.surfarray.array3d(surface).swapaxes(0, 1)
 
 
+
 def draw_bacterium(
     surface: pygame.Surface,
     bacterium: Bacterium,
@@ -68,15 +69,13 @@ def draw_bacterium(
     targets rather than bird triangles; drawing size is only a display choice.
     """
 
-    # Skip dead bacteria.
+    # Choose color based on alive status and bacteria type.
     if not bacterium.alive:
-        return
-
-    # Choose color based on bacteria type.
-    if bacterium.bacteria_type == "attacker":
-        color = (255, 80, 80)       # Red
+        color = (150, 150, 150)  # Gray for dead bacteria
+    elif bacterium.bacteria_type == "attacker":
+        color = (255, 80, 80)    # Red for attackers
     else:
-        color = (80, 200, 120)      # Green
+        color = (80, 200, 120)    # Green for targets
 
     # Convert environment coordinates to canvas coordinates.
     scale = canvas_width / environment_width
