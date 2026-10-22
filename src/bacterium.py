@@ -146,13 +146,13 @@ def update_position(
         time_step: The time step over which to update the position.
     Returns:
         An OrderedPair representing the updated position of the bacterium after
-        time_step seconds, with wrap-around at the environment boundaries.
+        time_step seconds.
         Dead or dividing bacteria remain at their current position.
+        
+        !!!Notice: when hit the boundary, stop at the boundary and choose a random inward direction.
+        
     Raises:
         ValueError: If environment_width is not positive or time_step is negative.
-
-    Assign update_velocity's result to b.velocity before calling this function.
-    Leave b and its vectors unchanged; the caller assigns the result.
     """
     if not b.alive or (b.health is not None and b.health <= 0) or b.is_division:
         return OrderedPair(b.position.x, b.position.y)
@@ -164,9 +164,62 @@ def update_position(
 
     # use the updated velocity and wrap coordinates into [0, environment_width)
     # because v is already associated with orientation, we can directly use it to update position
-    new_x = (b.position.x + b.velocity.x * time_step) % environment_width
-    new_y = (b.position.y + b.velocity.y * time_step) % environment_width
-
+    new_x = b.position.x + b.velocity.x * time_step
+    new_y = b.position.y + b.velocity.y * time_step
+    
+    # check boundary!
+    # four cases: left, right, top, bottom
+    if (new_x <= 0) or (new_x >= environment_width) or (new_y <= 0) or (new_y >= environment_width):
+        # stop at the boundary
+        new_x = max(0, min(new_x, environment_width))
+        new_y = max(0, min(new_y, environment_width))
+        
+        # choose a random inward direction
+        # have to point inside!
+        # speed does not change
+        speed = math.sqrt(b.velocity.x**2 + b.velocity.y**2)
+        angle = random.uniform(0, 2 * math.pi)
+        
+        
+        # choose angle based on which boundary is hit
+        # need consider corner first!!! (two conditions are true)
+        # left down
+        if new_x == 0 and new_y == 0:
+            angle = random.uniform(0, math.pi/2)
+        # left up
+        elif new_x == 0 and new_y == environment_width:
+            angle = random.uniform(-math.pi/2, 0)
+        # right down
+        elif new_x == environment_width and new_y == 0:
+            angle = random.uniform(math.pi/2, math.pi)
+        # right up
+        elif new_x == environment_width and new_y == environment_width:
+            angle = random.uniform(math.pi, 3*math.pi/2)
+        # now just one boundary
+        # left boundary, point right
+        elif new_x == 0:
+            angle = random.uniform(-math.pi/2, math.pi/2)
+        # right boundary, point left
+        elif new_x == environment_width:
+            angle = random.uniform(math.pi/2, 3*math.pi/2)
+        # bottom boundary, point up
+        elif new_y == 0:
+            angle = random.uniform(0, math.pi)
+        # top boundary, point down
+        elif new_y == environment_width:
+            angle = random.uniform(math.pi, 2 * math.pi)
+        
+        # seperate x and y
+        # already contrained the angle, so no need to use abs()
+        vel_x = speed * math.cos(angle)
+        vel_y = speed * math.sin(angle)
+        
+        # update final one
+        b.velocity = OrderedPair(vel_x, vel_y)
+        # to maintain the uniformity, turn angle to [0, 2*pi)
+        angle = angle % (2 * math.pi)
+        b.orientation = angle
+        
     return OrderedPair(new_x, new_y)
 
 
