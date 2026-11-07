@@ -5,6 +5,7 @@ from .datatypes import OrderedPair
 from .divison import update_energy, update_divide_state, divide
 
 
+
 @dataclass
 class Environment:
     """
