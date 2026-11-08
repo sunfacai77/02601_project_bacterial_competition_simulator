@@ -32,10 +32,13 @@ class Bacterium:
     
     bacteria_type: BacteriaType | None = None
     
-    # HP value. every hit will reduce the target's HP by some random value. 
-    health: float | None = None
-    # die when HP <= 0
+    # Normalized cell integrity I: starts at 1.0 and decreases with each hit
+    integrity: float = 1.0
+    # Die when integrity I <= 0
     alive: bool = True
+
+    # Seconds remaining before this cell can attack any target again.
+    attack_cooldown_remaining: float = 0.0
     
     # energy is associated with environment setting. assume every bacterium has the same energy recovery rate
     energy: float | None = None
@@ -77,7 +80,7 @@ def update_orientation(
     Raises:
         ValueError: If mean_run_time is not positive or time_step is negative.
     """
-    if not b.alive or (b.health is not None and b.health <= 0) or b.is_division:
+    if not b.alive or (b.integrity is not None and b.integrity <= 0) or b.is_division:
         return b.orientation
 
     if mean_run_time <= 0:
@@ -119,7 +122,7 @@ def update_velocity(
     Set motility_speed at or below max_bacterium_speed. Leave b and its vectors
     unchanged; the caller assigns the result.
     """
-    if not b.alive or (b.health is not None and b.health <= 0) or b.is_division:
+    if not b.alive or (b.integrity is not None and b.integrity <= 0) or b.is_division:
         return OrderedPair(0.0, 0.0)
 
     if motility_speed < 0:
@@ -154,7 +157,7 @@ def update_position(
     Raises:
         ValueError: If environment_width is not positive or time_step is negative.
     """
-    if not b.alive or (b.health is not None and b.health <= 0) or b.is_division:
+    if not b.alive or (b.integrity is not None and b.integrity <= 0) or b.is_division:
         return OrderedPair(b.position.x, b.position.y)
 
     if environment_width <= 0:
