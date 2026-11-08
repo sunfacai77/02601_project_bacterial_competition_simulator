@@ -2,6 +2,9 @@ from .bacterium import Bacterium
 from .datatypes import OrderedPair
 
 
+MIN_DIVISION_INTEGRITY = 0.2
+
+
 def update_energy(b: Bacterium, time_step: float) -> None:
     """Update a bacterium's energy and growth progress for one time step.
 
@@ -29,8 +32,13 @@ def update_divide_state(b: Bacterium, time_step: float) -> None:
     the bacterium as dividing and start its division timer.
 
     If the bacterium is already dividing, advance its timer by time_step.
+    Cells below the integrity threshold cannot start or continue division.
 
     """
+    if b.integrity < MIN_DIVISION_INTEGRITY:
+        b.is_division = False
+        return
+
     if not b.is_division:
 
         if b.growth_stage >= b.growth_threshold:  #when bacteria grow enough, start dividing
@@ -47,7 +55,12 @@ def divide(b: Bacterium, environment_width: float) -> Bacterium:
     Create a daughter of the same type at a nearby position with zero
     growth progress. The caller adds the returned daughter to the
     environment after the current time step's updates are complete.
+
+    Raises ValueError before changing the parent if integrity is below 0.2.
     """
+    if b.integrity < MIN_DIVISION_INTEGRITY:
+        raise ValueError("Cell integrity must be at least 0.2 to divide.")
+
     #下一步：附近菌的体积碰撞怎么判定
 
     b.growth_stage = 0.0
@@ -63,7 +76,9 @@ def divide(b: Bacterium, environment_width: float) -> Bacterium:
         position=OrderedPair(b.position.x + offset, b.position.y),
         orientation=b.orientation,
         bacteria_type=b.bacteria_type,
+        integrity=b.integrity,  # Inherit damage; division does not restore integrity.
         alive=True,
+        attack_cooldown_remaining=b.attack_cooldown_remaining,
         energy=0.0,
         energy_recovery_rate=b.energy_recovery_rate,
         growth_rate=b.growth_rate,

@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, field
 
 from .bacterium import Bacterium, update_orientation, update_velocity, update_position, distance
@@ -84,8 +85,9 @@ def copy_environment(current_environment: Environment) -> Environment:
 
             orientation=bacterium.orientation,
             bacteria_type=bacterium.bacteria_type,
-            health=bacterium.health,
+            integrity=bacterium.integrity,
             alive=bacterium.alive,
+            attack_cooldown_remaining=bacterium.attack_cooldown_remaining,
 
             energy=bacterium.energy,
             energy_recovery_rate=bacterium.energy_recovery_rate,
@@ -141,7 +143,12 @@ def update_environment(
     then assign update_velocity and update_position results to the copied agent.
     After all motion is complete, detect contacts and resolve killing on the copy.
     Dead agents remain stored and stationary. Never mutate current_environment.
+    time_step is measured in seconds and must be positive. Attack cooldowns
+    advance once per step, including while dividing or out of contact.
     """
+    if time_step <= 0:
+        raise ValueError("Time step must be positive.")
+
     from .interactions import detect_contacts, resolve_killing
 
     next_environment = copy_environment(current_environment)
@@ -150,6 +157,13 @@ def update_environment(
     for index, bacterium in enumerate(next_environment.bacteria):
         if not bacterium.alive:
             continue
+
+        bacterium.attack_cooldown_remaining = max(
+            0.0, bacterium.attack_cooldown_remaining - time_step
+        )
+        # Avoid an extra step of waiting after e.g. fifty 0.1-second steps.
+        if math.isclose(bacterium.attack_cooldown_remaining, 0.0, abs_tol=1e-12):
+            bacterium.attack_cooldown_remaining = 0.0
 
         # Compute new orientation and velocity of 'i' based on current environment
         
@@ -193,6 +207,6 @@ def update_environment(
 
     # After all motion update is complete, detect contacts and resolve killing on the copy(interaction)
     contacts = detect_contacts(next_environment)      #! return a list of ContactPairs, a tuple of two bacteria
-    resolve_killing(contacts)                         #! update the alive status of bacteria(or the health index)
+    resolve_killing(contacts)                         #! update integrity I and alive status
 
     return next_environment

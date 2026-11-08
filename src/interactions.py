@@ -1,3 +1,5 @@
+import random
+
 from .bacterium import Bacterium, distance
 from .environment import Environment
 
@@ -6,8 +8,14 @@ ContactPair = tuple[Bacterium, Bacterium]
 # finding the bacterium pairs that would contact(compute the euclidean distance for each pair)
 
 # rules:
-# [alive attacker , alive target] --> kill
-# health change...? density...?  division speed?
+# [alive attacker , alive target] --> reduce integrity I; kill when I <= 0
+
+# Modeling assumption, not an experimentally calibrated toxin damage range!
+MIN_INTEGRITY_DAMAGE = 0.4
+MAX_INTEGRITY_DAMAGE = 0.6
+
+# Temporary model setting in seconds; applies across all targets of an attacker.
+ATTACK_COOLDOWN = 1.0
 
 
 def detect_contacts(environment: Environment) -> list[ContactPair]:
@@ -50,13 +58,14 @@ def detect_contacts(environment: Environment) -> list[ContactPair]:
 
 def kill_target(attacker: Bacterium, target: Bacterium) -> None:
     """
-    Mark a living target dead after attacker contact. Author/reviewer: TODO.
+    Reduce a living target's integrity I after a successful attacker contact.
 
     Only living attacker-target inputs may trigger killing. Contact has already
     been checked by the caller; same-type pairs must not trigger killing.
+    Each hit subtracts a uniform 0.4-0.6 of full integrity (1.0), not a fraction
+    of remaining integrity. The target dies only when integrity falls to <= 0.
+    The caller checks attack energy, division state, and cooldown.
     """
-
-    # if attacker & target --> target.alive = False
 
     if not attacker.alive or not target.alive:
         return
@@ -69,7 +78,9 @@ def kill_target(attacker: Bacterium, target: Bacterium) -> None:
 
     # (attacker, target) satisfy the order, status and type
 
-    target.alive = False
+    target.integrity -= random.uniform(MIN_INTEGRITY_DAMAGE, MAX_INTEGRITY_DAMAGE)
+    if target.integrity <= 0:
+        target.alive = False
 
 
 
@@ -79,18 +90,25 @@ def resolve_killing(contacts: list[ContactPair]) -> None:
 
     Pairs must refer to agents in the new environment, so killing cannot
     change any earlier snapshot in time_points.
+    Each successful attack starts a cooldown shared across all possible targets.
     """
     # (attacker, target)
     kill_cost = 4  #attacker use engery to kill
 
     for b0, b1 in contacts:
+        # Earlier contacts in this round may already have killed the target!
+        if not b0.alive or not b1.alive:
+            continue
+
         if b0.bacteria_type == "attacker" and b1.bacteria_type == "target" and (not b0.is_division):
-            if b0.energy >= kill_cost:
+            if b0.energy >= kill_cost and b0.attack_cooldown_remaining <= 0:
                 b0.energy = b0.energy - kill_cost
                 kill_target(b0, b1)
+                b0.attack_cooldown_remaining = ATTACK_COOLDOWN
 
         elif b0.bacteria_type == "target" and b1.bacteria_type == "attacker" and (not b1.is_division):
-            if b1.energy >= kill_cost:
+            if b1.energy >= kill_cost and b1.attack_cooldown_remaining <= 0:
                 b1.energy = b1.energy - kill_cost
                 kill_target(b1, b0)
+                b1.attack_cooldown_remaining = ATTACK_COOLDOWN
 
