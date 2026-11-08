@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from .bacterium import Bacterium, update_orientation, update_velocity, update_position
+from .bacterium import Bacterium, update_orientation, update_velocity, update_position, distance
 from .datatypes import OrderedPair
 from .divison import update_energy, update_divide_state, divide
 
@@ -29,6 +29,12 @@ class Environment:
     contact_distance: float = 0.0
     mean_run_time: float = 0.0
     motility_speed: float = 0.0
+
+    #* NEW ADDED: for dynamic clustering neighbor density check
+    crowding_radius: float = 0.0
+    crowding_threshold: int = 0
+    crowded_speed_factor: float = 1.0       # when = 1.0 , no effect on speed
+
 
     def in_field(self, p: OrderedPair) -> bool:
         """
@@ -59,6 +65,10 @@ def copy_environment(current_environment: Environment) -> Environment:
         contact_distance=current_environment.contact_distance,
         mean_run_time=current_environment.mean_run_time,
         motility_speed=current_environment.motility_speed,
+
+        crowding_radius=current_environment.crowding_radius,
+        crowding_threshold=current_environment.crowding_threshold,
+        crowded_speed_factor=current_environment.crowded_speed_factor
     )
 
     for bacterium in current_environment.bacteria:
@@ -95,6 +105,28 @@ def copy_environment(current_environment: Environment) -> Environment:
 
     return new_environment
 
+def count_neighbors(
+        bacterium: Bacterium,   
+        environment: Environment,
+        radius: float
+    ) -> int:
+    """
+    Count the number of LIVING neighbors within the specified radius.
+    """
+    neighbor_count = 0
+
+    for other_bacterium in environment.bacteria:
+        if other_bacterium is bacterium:
+            continue             # skip self
+        elif not other_bacterium.alive:
+            continue       # skip dead bacteria
+
+        elif distance(bacterium.position, other_bacterium.position) <= radius:
+            neighbor_count += 1
+
+    return neighbor_count
+
+
 
 def update_environment(
     current_environment: Environment,
@@ -115,7 +147,7 @@ def update_environment(
     next_environment = copy_environment(current_environment)
     new_born = [] #new bacteria from division
 
-    for bacterium in next_environment.bacteria:
+    for index, bacterium in enumerate(next_environment.bacteria):
         if not bacterium.alive:
             continue
 
@@ -129,9 +161,18 @@ def update_environment(
 
         )
 
+        old_bacterium = current_environment.bacteria[index]
+        neighbor_count = count_neighbors(old_bacterium, current_environment, current_environment.crowding_radius)
+
+        effective_speed = current_environment.motility_speed
+
+        if neighbor_count > current_environment.crowding_threshold:
+            effective_speed *= current_environment.crowded_speed_factor
+        
+
         bacterium.velocity = update_velocity(
             bacterium,
-            current_environment.motility_speed,
+            effective_speed,
             current_environment.max_bacterium_speed,
         )
 
