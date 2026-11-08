@@ -35,7 +35,13 @@ def main() -> None:
         mean_run_time=mean_run_time,
         motility_speed=motility_speed,
         seed=42,
-    )
+        layout="mixed_clusters",  # Choose from "uniform", "mixed_clusters", or "separated_clusters"
+        crowding_radius=100.0,
+        crowding_threshold=5,
+        crowded_speed_factor=0.2,
+        )
+    
+
     time_points = simulate_bacteria(initial_environment, num_gens, time_step)
     images = animate_system(time_points, canvas_width, drawing_frequency)
 
