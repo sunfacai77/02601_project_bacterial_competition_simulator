@@ -10,7 +10,6 @@ ContactPair = tuple[Bacterium, Bacterium]
 # health change...? density...?  division speed?
 
 
-
 def detect_contacts(environment: Environment) -> list[ContactPair]:
     """
     Return unique living pairs within the threshold. Author/reviewer: TODO.
@@ -82,9 +81,16 @@ def resolve_killing(contacts: list[ContactPair]) -> None:
     change any earlier snapshot in time_points.
     """
     # (attacker, target)
-    for b0, b1 in contacts:
-        if b0.bacteria_type == "attacker" and b1.bacteria_type == "target":
-            kill_target(b0, b1)
+    kill_cost = 4  #attacker use engery to kill
 
-        elif b0.bacteria_type == "target" and b1.bacteria_type == "attacker":
-            kill_target(b1, b0)
+    for b0, b1 in contacts:
+        if b0.bacteria_type == "attacker" and b1.bacteria_type == "target" and (not b0.is_division):
+            if b0.energy >= kill_cost:
+                b0.energy = b0.energy - kill_cost
+                kill_target(b0, b1)
+
+        elif b0.bacteria_type == "target" and b1.bacteria_type == "attacker" and (not b1.is_division):
+            if b1.energy >= kill_cost:
+                b1.energy = b1.energy - kill_cost
+                kill_target(b1, b0)
+

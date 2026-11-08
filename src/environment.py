@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 from .bacterium import Bacterium, update_orientation, update_velocity, update_position, distance
 from .datatypes import OrderedPair
+from .divison import update_energy, update_divide_state, divide
 
 
 
@@ -144,6 +145,7 @@ def update_environment(
     from .interactions import detect_contacts, resolve_killing
 
     next_environment = copy_environment(current_environment)
+    new_born = [] #new bacteria from division
 
     for index, bacterium in enumerate(next_environment.bacteria):
         if not bacterium.alive:
@@ -180,11 +182,17 @@ def update_environment(
             time_step,
         )
 
+        update_energy(bacterium, time_step)
 
+        update_divide_state(bacterium, time_step)
+        if bacterium.is_division and bacterium.division_time <= 0:
+            new_born.append(divide(bacterium, next_environment.width))
+
+    next_environment.bacteria.extend(new_born)  # add newly divided bacteria from this round
+                                                #do not update them in this round, put outside of the loop
 
     # After all motion update is complete, detect contacts and resolve killing on the copy(interaction)
     contacts = detect_contacts(next_environment)      #! return a list of ContactPairs, a tuple of two bacteria
     resolve_killing(contacts)                         #! update the alive status of bacteria(or the health index)
-
 
     return next_environment

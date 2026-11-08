@@ -121,6 +121,12 @@ def initialize_environment(
                 orientation=rng.uniform(0.0, 2 * math.pi),
                 bacteria_type=bacteria_type,
                 alive=True,
+                energy=0.0,
+                energy_recovery_rate=2.0,
+                growth_rate=1.0,
+                growth_stage=0.0,
+                growth_threshold=8.0,
+                division_time=2.0,
                 is_division=False,
             )
 
@@ -133,3 +139,4 @@ def initialize_environment(
             environment.bacteria.append(bacterium)
 
     return environment
+
