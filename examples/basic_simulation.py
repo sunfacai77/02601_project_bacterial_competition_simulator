@@ -39,10 +39,15 @@ def main() -> None:
         crowding_radius=0.0,
         crowding_threshold=0,
         crowded_speed_factor=1.0,
+        slow_zone_radius= 0.12 * width,  # 12% of the environment width
+        slow_zone_min_factor=0.4,
         )
+
     
 
     time_points = simulate_bacteria(initial_environment, num_gens, time_step)
+
+
     images = animate_system(time_points, canvas_width, drawing_frequency)
 
     # Count living and dead bacteria in the final snapshot

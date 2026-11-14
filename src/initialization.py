@@ -20,6 +20,8 @@ def initialize_environment(
     crowding_radius: float = 0.0,
     crowding_threshold: int = 0,
     crowded_speed_factor: float = 1.0,
+    slow_zone_radius: float = 0.0,
+    slow_zone_min_factor: float = 0.4,
 ) -> Environment:
     """
     Create an initial snapshot using the HW1 sampling pattern. Author/reviewer: TODO.
@@ -62,6 +64,8 @@ def initialize_environment(
         crowding_radius=crowding_radius,
         crowding_threshold=crowding_threshold,
         crowded_speed_factor=crowded_speed_factor,
+        slow_zone_radius=slow_zone_radius,
+        slow_zone_min_factor=slow_zone_min_factor,
     )
 
 
