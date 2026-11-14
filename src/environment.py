@@ -36,6 +36,11 @@ class Environment:
     crowding_threshold: int = 0
     crowded_speed_factor: float = 1.0       # when = 1.0 , no effect on speed
 
+    #* NEW ADDED: for slow zone(4 circles) in the environment, bacteria will slow down when they enter the zone
+    slow_zone_radius: float = 0.0
+    slow_zone_min_factor: float = 0.4      # when = 1.0 , no effect on speed; 0.4 at the center
+
+
 
     def in_field(self, p: OrderedPair) -> bool:
         """
@@ -48,6 +53,42 @@ class Environment:
             return False
 
         # return (0 <= p.x <= self.width) and (0 <= p.y <= self.width)
+
+    def slow_zone_centers(self) -> list[OrderedPair]:
+        """
+        Return 4 centers of slow zones, as in Universe.slow_zone_centers.
+        """
+
+        quarter = self.width / 4
+        three_quarters = 3 * quarter
+
+        return [
+            OrderedPair(quarter, quarter),
+            OrderedPair(three_quarters, quarter),
+            OrderedPair(quarter, three_quarters),
+            OrderedPair(three_quarters, three_quarters)
+        ]
+
+    def slow_zone_speed_factor(self, position: OrderedPair) -> float:
+        """
+        Return the speed factor for a bacterium at the given position.
+        Based on the distance to the nearest slow zone center, the distance determines the speed factor(linear interpolation
+        """
+        radius = self.slow_zone_radius
+
+        if radius <= 0:
+            return 1.0  # No slow zone effect
+
+        for center in self.slow_zone_centers():
+            dist_to_center = distance(position, center)
+
+            if dist_to_center <= radius:
+                # Linear interpolation of speed factor based on distance to center
+                fraction = dist_to_center / radius
+                return self.slow_zone_min_factor + (1 - self.slow_zone_min_factor) * fraction
+
+        return 1.0      # outside of the slow zone
+
 
 def copy_environment(current_environment: Environment) -> Environment:
     """
@@ -69,7 +110,10 @@ def copy_environment(current_environment: Environment) -> Environment:
 
         crowding_radius=current_environment.crowding_radius,
         crowding_threshold=current_environment.crowding_threshold,
-        crowded_speed_factor=current_environment.crowded_speed_factor
+        crowded_speed_factor=current_environment.crowded_speed_factor,
+
+        slow_zone_radius=current_environment.slow_zone_radius,
+        slow_zone_min_factor=current_environment.slow_zone_min_factor,
     )
 
     for bacterium in current_environment.bacteria:
@@ -179,6 +223,9 @@ def update_environment(
         neighbor_count = count_neighbors(old_bacterium, current_environment, current_environment.crowding_radius)
 
         effective_speed = current_environment.motility_speed
+
+        zone_factor = current_environment.slow_zone_speed_factor(old_bacterium.position)
+        effective_speed *= zone_factor
 
         if neighbor_count > current_environment.crowding_threshold:
             effective_speed *= current_environment.crowded_speed_factor
