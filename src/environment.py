@@ -6,7 +6,6 @@ from .datatypes import OrderedPair
 from .divison import update_energy, update_divide_state, divide
 
 
-
 @dataclass
 class Environment:
     """
@@ -31,16 +30,14 @@ class Environment:
     mean_run_time: float = 0.0
     motility_speed: float = 0.0
 
-    #* NEW ADDED: for dynamic clustering neighbor density check
+    # * NEW ADDED: for dynamic clustering neighbor density check
     crowding_radius: float = 0.0
     crowding_threshold: int = 0
-    crowded_speed_factor: float = 1.0       # when = 1.0 , no effect on speed
+    crowded_speed_factor: float = 1.0  # when = 1.0 , no effect on speed
 
-    #* NEW ADDED: for slow zone(4 circles) in the environment, bacteria will slow down when they enter the zone
+    # * NEW ADDED: for slow zone(4 circles) in the environment, bacteria will slow down when they enter the zone
     slow_zone_radius: float = 0.0
-    slow_zone_min_factor: float = 0.4      # when = 1.0 , no effect on speed; 0.4 at the center
-
-
+    slow_zone_min_factor: float = 0.4  # when = 1.0 , no effect on speed; 0.4 at the center
 
     def in_field(self, p: OrderedPair) -> bool:
         """
@@ -87,7 +84,7 @@ class Environment:
                 fraction = dist_to_center / radius
                 return self.slow_zone_min_factor + (1 - self.slow_zone_min_factor) * fraction
 
-        return 1.0      # outside of the slow zone
+        return 1.0  # outside of the slow zone
 
 
 def copy_environment(current_environment: Environment) -> Environment:
@@ -102,7 +99,7 @@ def copy_environment(current_environment: Environment) -> Environment:
 
     new_environment = Environment(
         width=current_environment.width,
-        max_bacterium_speed=current_environment.max_bacterium_speed,       #! 没有传bacterium，会通过defauly_factory=list自动创建一个空列表?
+        max_bacterium_speed=current_environment.max_bacterium_speed,  # ! 没有传bacterium，会通过defauly_factory=list自动创建一个空列表?
         proximity=current_environment.proximity,
         contact_distance=current_environment.contact_distance,
         mean_run_time=current_environment.mean_run_time,
@@ -118,12 +115,12 @@ def copy_environment(current_environment: Environment) -> Environment:
 
     for bacterium in current_environment.bacteria:
         new_bacterium = Bacterium(
-            position=OrderedPair(                                           #! 不能写position=bacterium.position, 是浅拷贝，后续会改改变原值
-                bacterium.position.x,                                       #! 数值copy，对象不copy
+            position=OrderedPair(  # ! 不能写position=bacterium.position, 是浅拷贝，后续会改改变原值
+                bacterium.position.x,  # ! 数值copy，对象不copy
                 bacterium.position.y
             ),
             velocity=OrderedPair(
-                bacterium.velocity.x, 
+                bacterium.velocity.x,
                 bacterium.velocity.y
             ),
 
@@ -144,8 +141,7 @@ def copy_environment(current_environment: Environment) -> Environment:
             division_time=bacterium.division_time,
 
             radius=bacterium.radius,
-)
-
+        )
 
         new_environment.bacteria.append(new_bacterium)
 
@@ -174,10 +170,53 @@ def count_neighbors(
 
 
 
+def count_neighbors(
+        bacterium: Bacterium,
+        environment: Environment,
+        radius: float
+) -> int:
+    """
+    Count the number of LIVING neighbors within the specified radius.
+    """
+    neighbor_count = 0
+
+    for other_bacterium in environment.bacteria:
+        if other_bacterium is bacterium:
+            continue  # skip self
+        elif not other_bacterium.alive:
+            continue  # skip dead bacteria
+
+        elif distance(bacterium.position, other_bacterium.position) <= radius:
+            neighbor_count += 1
+
+    return neighbor_count
+
+def count_dead_neighbors(
+        bacterium: Bacterium,
+        environment: Environment,
+        radius: float
+    ) -> int:
+    """
+    Count the number of LIVING neighbors within the specified radius.
+    """
+    neighbor_count = 0
+
+    for other_bacterium in environment.bacteria:
+        if other_bacterium is bacterium:
+            continue             # skip self
+        elif other_bacterium.alive:
+            continue       # skip live bacteria
+
+        elif distance(bacterium.position, other_bacterium.position) <= radius:
+            neighbor_count += 1
+
+    return neighbor_count
+
+
 def update_environment(
-    current_environment: Environment,
-    time_step: float,
-    rng = None,
+        current_environment: Environment,
+        time_step: float,
+        rng=None,
 ) -> Environment:
     """
     Return the next snapshot, as in update_sky/update_universe. Author/reviewer: TODO.
@@ -196,7 +235,7 @@ def update_environment(
     from .interactions import detect_contacts, resolve_killing
 
     next_environment = copy_environment(current_environment)
-    new_born = [] #new bacteria from division
+    new_born = []  # new bacteria from division
 
     for index, bacterium in enumerate(next_environment.bacteria):
         if not bacterium.alive:
@@ -210,7 +249,7 @@ def update_environment(
             bacterium.attack_cooldown_remaining = 0.0
 
         # Compute new orientation and velocity of 'i' based on current environment
-        
+
         bacterium.orientation = update_orientation(
             bacterium,
             current_environment.mean_run_time,
@@ -229,7 +268,6 @@ def update_environment(
 
         if neighbor_count > current_environment.crowding_threshold:
             effective_speed *= current_environment.crowded_speed_factor
-        
 
         bacterium.velocity = update_velocity(
             bacterium,
@@ -243,17 +281,24 @@ def update_environment(
             time_step,
         )
 
-        update_energy(bacterium, time_step)
+    for bacterium in next_environment.bacteria:
+        if not bacterium.alive:
+            continue
 
-        update_divide_state(bacterium, time_step)
+        num_competitor = count_neighbors(bacterium, next_environment, 2 * next_environment.contact_distance)
+        update_energy(bacterium, time_step, num_competitor)
+
+        num_lysis = count_dead_neighbors(bacterium, next_environment, next_environment.contact_distance)
+        update_divide_state(bacterium, time_step, num_lysis)
+
         if bacterium.is_division and bacterium.division_time <= 0:
             new_born.append(divide(bacterium, next_environment.width))
 
     next_environment.bacteria.extend(new_born)  # add newly divided bacteria from this round
-                                                #do not update them in this round, put outside of the loop
+    # do not update them in this round, put outside of the loop
 
     # After all motion update is complete, detect contacts and resolve killing on the copy(interaction)
-    contacts = detect_contacts(next_environment)      #! return a list of ContactPairs, a tuple of two bacteria
-    resolve_killing(contacts)                         #! update integrity I and alive status
+    contacts = detect_contacts(next_environment)  # ! return a list of ContactPairs, a tuple of two bacteria
+    resolve_killing(contacts)  # ! update integrity I and alive status
 
     return next_environment
