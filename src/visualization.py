@@ -42,6 +42,19 @@ def draw_to_canvas(environment: Environment, canvas_width: int) -> np.ndarray:
     surface = pygame.Surface((canvas_width, canvas_width))
     surface.fill((255, 255, 255))
 
+    #* NEW ADDED：draw the slow zone circle
+    if environment.slow_zone_radius > 0:
+        scale = canvas_width / environment.width
+        radius_px = max(1, round(environment.slow_zone_radius * scale))
+        
+        for center in environment.slow_zone_centers():
+            center_px = (
+                round(center.x * scale),
+                round(center.y * scale),
+                )
+            
+            pygame.draw.circle(surface, (175, 195, 220), center_px, radius_px, width=2)
+
     # Draw each bacterium in the environment.
     for bacterium in environment.bacteria:
         draw_bacterium(

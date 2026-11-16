@@ -147,6 +147,28 @@ def copy_environment(current_environment: Environment) -> Environment:
 
     return new_environment
 
+def count_neighbors(
+        bacterium: Bacterium,   
+        environment: Environment,
+        radius: float
+    ) -> int:
+    """
+    Count the number of LIVING neighbors within the specified radius.
+    """
+    neighbor_count = 0
+
+    for other_bacterium in environment.bacteria:
+        if other_bacterium is bacterium:
+            continue             # skip self
+        elif not other_bacterium.alive:
+            continue       # skip dead bacteria
+
+        elif distance(bacterium.position, other_bacterium.position) <= radius:
+            neighbor_count += 1
+
+    return neighbor_count
+
+
 
 def count_neighbors(
         bacterium: Bacterium,

@@ -13,7 +13,7 @@ def main() -> None:
     width = 2000.0
     max_bacterium_speed = 120.0
     proximity = 300.0
-    num_gens = 200
+    num_gens = 600
     time_step = 0.1
     canvas_width = 600
     drawing_frequency = 2
@@ -35,8 +35,19 @@ def main() -> None:
         mean_run_time=mean_run_time,
         motility_speed=motility_speed,
         seed=42,
-    )
+        layout="uniform",  # Choose from "uniform", "mixed_clusters", or "separated_clusters"
+        crowding_radius=0.0,
+        crowding_threshold=0,
+        crowded_speed_factor=1.0,
+        slow_zone_radius= 0.12 * width,  # 12% of the environment width
+        slow_zone_min_factor=0.4,
+        )
+
+    
+
     time_points = simulate_bacteria(initial_environment, num_gens, time_step)
+
+
     images = animate_system(time_points, canvas_width, drawing_frequency)
 
     # Count living and dead bacteria in the final snapshot
