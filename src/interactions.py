@@ -17,6 +17,8 @@ MAX_INTEGRITY_DAMAGE = 0.6
 # Temporary model setting in seconds; applies across all targets of an attacker.
 ATTACK_COOLDOWN = 1.0
 
+# attacker use energy to kill
+KILL_COST = 0.2
 
 def detect_contacts(environment: Environment) -> list[ContactPair]:
     """
@@ -93,7 +95,6 @@ def resolve_killing(contacts: list[ContactPair]) -> None:
     Each successful attack starts a cooldown shared across all possible targets.
     """
     # (attacker, target)
-    kill_cost = 4  #attacker use engery to kill
 
     for b0, b1 in contacts:
         # Earlier contacts in this round may already have killed the target!
@@ -101,14 +102,15 @@ def resolve_killing(contacts: list[ContactPair]) -> None:
             continue
 
         if b0.bacteria_type == "attacker" and b1.bacteria_type == "target" and (not b0.is_division):
-            if b0.energy >= kill_cost and b0.attack_cooldown_remaining <= 0:
-                b0.energy = b0.energy - kill_cost
+            if b0.energy >= KILL_COST and b0.attack_cooldown_remaining <= 0:
+                b0.energy = b0.energy - KILL_COST
                 kill_target(b0, b1)
                 b0.attack_cooldown_remaining = ATTACK_COOLDOWN
 
         elif b0.bacteria_type == "target" and b1.bacteria_type == "attacker" and (not b1.is_division):
-            if b1.energy >= kill_cost and b1.attack_cooldown_remaining <= 0:
-                b1.energy = b1.energy - kill_cost
+            if b1.energy >= KILL_COST and b1.attack_cooldown_remaining <= 0:
+                b1.energy = b1.energy - KILL_COST
                 kill_target(b1, b0)
                 b1.attack_cooldown_remaining = ATTACK_COOLDOWN
+
 
