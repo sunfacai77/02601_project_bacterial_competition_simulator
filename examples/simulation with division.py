@@ -38,24 +38,29 @@ def main() -> None:
     )
     time_points = simulate_bacteria(initial_environment, num_gens, time_step)
     initial_count = len(initial_environment.bacteria)
+    alive_count = sum(bacterium.alive for bacterium in initial_environment.bacteria)
+    newborn_count = 0
+    first_division_step = None
+
+    for step, environment in enumerate(time_points[1:], start=1):
+        previous_alive_count = alive_count
+        alive_count = sum(bacterium.alive for bacterium in environment.bacteria)
+        newly_dead = sum(
+            not bacterium.alive and bacterium.time_since_death == 0.0
+            for bacterium in environment.bacteria
+        )
+        # Add back this step's deaths to recover the number of births.
+        births = alive_count + newly_dead - previous_alive_count
+        newborn_count += births
+        if births > 0 and first_division_step is None:
+            first_division_step = step
+
     final_bacteria = time_points[-1].bacteria
-    alive_count = sum(bacterium.alive for bacterium in final_bacteria)
-
-    # Dead bacteria stay in the snapshots, so population increases count births.
-    first_division_step = next(
-        (
-            step
-            for step, environment in enumerate(time_points[1:], start=1)
-            if len(environment.bacteria) > initial_count
-        ),
-        None,
-    )
-
     print(f"Initial bacteria: {initial_count}")
-    print(f"Newborn bacteria: {len(final_bacteria) - initial_count}")
+    print(f"Newborn bacteria: {newborn_count}")
 
     print(f"Alive bacteria: {alive_count}")
-    print(f"Dead bacteria: {len(final_bacteria) - alive_count}")
+    print(f"Dead bacteria still present: {len(final_bacteria) - alive_count}")
     if first_division_step is None:
         print("No division completed during the simulation.")
     else:

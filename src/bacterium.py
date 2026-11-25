@@ -58,6 +58,18 @@ class Bacterium:
     # may be used
     radius: float | None = None
 
+    # Elapsed simulation seconds since the cell was marked dead
+    time_since_death: float = 0.0
+
+    def advance_death_timer(self, time_step: float, clearance_time: float) -> bool:
+        """Advance a dead cell's timer and report whether it is due for removal."""
+        if self.alive:
+            return False
+
+        self.time_since_death += time_step
+        return self.time_since_death >= clearance_time or math.isclose(
+            self.time_since_death, clearance_time, rel_tol=1e-12
+        )
 
 
 def update_orientation(

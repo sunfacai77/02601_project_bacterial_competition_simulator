@@ -1,6 +1,6 @@
 import math
 import random
-from .environment import Environment
+from .environment import DEFAULT_DEAD_CELL_CLEARANCE_TIME, Environment
 from .datatypes import OrderedPair
 from .bacterium import Bacterium, update_velocity
 
@@ -22,14 +22,16 @@ def initialize_environment(
     crowded_speed_factor: float = 1.0,
     slow_zone_radius: float = 0.0,
     slow_zone_min_factor: float = 0.4,
+    dead_cell_clearance_time: float = DEFAULT_DEAD_CELL_CLEARANCE_TIME,
 ) -> Environment:
     """
-    Create an initial snapshot using the HW1 sampling pattern. Author/reviewer: TODO.
+    Create an initial snapshot using the HW1 sampling pattern.
 
     Sample each position coordinate uniformly in [0, width] and each velocity
     component in [-initial_velocity_range, initial_velocity_range]. Set initial
     acceleration to OrderedPair(0.0, 0.0) and alive to True. Apply the speed limit.
     Use a local random.Random(seed) generator for repeatable initial states.
+    dead_cell_clearance_time is the number of simulation seconds a dead cell remains.
     Return one Environment containing num_attackers + num_targets agents.
     """
     if num_attackers < 0 or num_targets < 0:
@@ -66,6 +68,7 @@ def initialize_environment(
         crowded_speed_factor=crowded_speed_factor,
         slow_zone_radius=slow_zone_radius,
         slow_zone_min_factor=slow_zone_min_factor,
+        dead_cell_clearance_time=dead_cell_clearance_time,
     )
 
 

@@ -7,7 +7,7 @@ def simulate_bacteria(
     time_step: float,
 ) -> list[Environment]:
     """
-    Return the initial state and num_gens updated states. Author/reviewer: TODO.
+    Return the initial state and num_gens updated states.
 
     Follow simulate_boids(initial_sky, num_gens, time_step): start time_points
     with initial_environment, then repeatedly call update_environment on the

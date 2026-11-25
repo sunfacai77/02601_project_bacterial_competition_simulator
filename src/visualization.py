@@ -15,7 +15,7 @@ def animate_system(
     drawing_frequency: int,
 ) -> list[np.ndarray]:
     """
-    Render every drawing_frequency-th state, as in HW1. Author/reviewer: TODO.
+    Render every drawing_frequency-th state, as in HW1.
 
     Return RGB arrays of shape (canvas_width, canvas_width, 3) for imageio.
     Render saved snapshots without advancing or mutating the simulation.
@@ -33,7 +33,7 @@ def animate_system(
 
 def draw_to_canvas(environment: Environment, canvas_width: int) -> np.ndarray:
     """
-    Render a snapshot with an offscreen Pygame surface. Author/reviewer: TODO.
+    Render a snapshot with an offscreen Pygame surface.
 
     Scale coordinates by canvas_width / environment.width. Return the RGB
     array with axes ordered (height, width, channels), matching HW1 output.
@@ -76,7 +76,7 @@ def draw_bacterium(
     canvas_width: int,
 ) -> None:
     """
-    Draw one living agent with its population's color. Author/reviewer: TODO.
+    Draw one living agent with its population's color.
 
     Corresponds to draw_boid in HW1. Start with circles for attackers and
     targets rather than bird triangles; drawing size is only a display choice.
