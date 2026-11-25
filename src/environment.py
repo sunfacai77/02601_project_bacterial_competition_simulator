@@ -6,6 +6,9 @@ from .datatypes import OrderedPair
 from .divison import update_energy, update_divide_state, divide
 
 
+DEFAULT_DEAD_CELL_CLEARANCE_TIME = 10.0  # Simulation seconds
+
+
 @dataclass
 class Environment:
     """
@@ -17,6 +20,7 @@ class Environment:
         max_bacterium_speed: Speed limit, corresponding to max_boid_speed.
         proximity: Neighborhood distance for future movement rules, as in HW1.
         contact_distance: Separate threshold for bacterial contact and killing.
+        dead_cell_clearance_time: Seconds a dead agent stays in the environment.
 
     Defaults follow the zero/empty dataclass style of the homework. Set actual
     simulation parameters during initialization; they are not biological units.
@@ -39,9 +43,15 @@ class Environment:
     slow_zone_radius: float = 0.0
     slow_zone_min_factor: float = 0.4  # when = 1.0 , no effect on speed; 0.4 at the center
 
+    dead_cell_clearance_time: float = DEFAULT_DEAD_CELL_CLEARANCE_TIME
+
+    def __post_init__(self) -> None:
+        if not 0 < self.dead_cell_clearance_time < math.inf:
+            raise ValueError("Dead cell clearance time must be finite and positive.")
+
     def in_field(self, p: OrderedPair) -> bool:
         """
-        Check [0, width] x [0, width], as in Universe.in_field. Author/reviewer: TODO.
+        Check [0, width] x [0, width], as in Universe.in_field.
         """
 
         if (0 <= p.x <= self.width) and (0 <= p.y <= self.width):
@@ -89,7 +99,7 @@ class Environment:
 
 def copy_environment(current_environment: Environment) -> Environment:
     """
-    Return an independent copy, as in copy_sky/copy_universe. Author/reviewer: TODO.
+    Return an independent copy, as in copy_sky/copy_universe.
 
     Copy every parameter and bacterium, including alive and bacteria_type.
     Allocate new OrderedPair objects for position, velocity, and acceleration.
@@ -111,6 +121,7 @@ def copy_environment(current_environment: Environment) -> Environment:
 
         slow_zone_radius=current_environment.slow_zone_radius,
         slow_zone_min_factor=current_environment.slow_zone_min_factor,
+        dead_cell_clearance_time=current_environment.dead_cell_clearance_time,
     )
 
     for bacterium in current_environment.bacteria:
@@ -141,32 +152,12 @@ def copy_environment(current_environment: Environment) -> Environment:
             division_time=bacterium.division_time,
 
             radius=bacterium.radius,
+            time_since_death=bacterium.time_since_death,
         )
 
         new_environment.bacteria.append(new_bacterium)
 
     return new_environment
-
-def count_neighbors(
-        bacterium: Bacterium,   
-        environment: Environment,
-        radius: float
-    ) -> int:
-    """
-    Count the number of LIVING neighbors within the specified radius.
-    """
-    neighbor_count = 0
-
-    for other_bacterium in environment.bacteria:
-        if other_bacterium is bacterium:
-            continue             # skip self
-        elif not other_bacterium.alive:
-            continue       # skip dead bacteria
-
-        elif distance(bacterium.position, other_bacterium.position) <= radius:
-            neighbor_count += 1
-
-    return neighbor_count
 
 
 
@@ -197,7 +188,7 @@ def count_dead_neighbors(
         radius: float
     ) -> int:
     """
-    Count the number of LIVING neighbors within the specified radius.
+    Count the dead neighbors still present within the specified radius.
     """
     neighbor_count = 0
 
@@ -219,18 +210,19 @@ def update_environment(
         rng=None,
 ) -> Environment:
     """
-    Return the next snapshot, as in update_sky/update_universe. Author/reviewer: TODO.
+    Return the next snapshot, as in update_sky/update_universe.
 
     Copy the current environment first. For each living agent, preserve its old
     acceleration and velocity, compute acceleration from current_environment,
     then assign update_velocity and update_position results to the copied agent.
-    After all motion is complete, detect contacts and resolve killing on the copy.
-    Dead agents remain stored and stationary. Never mutate current_environment.
-    time_step is measured in seconds and must be positive. Attack cooldowns
-    advance once per step, including while dividing or out of contact.
+    After motion, clear expired dead agents before counting neighbors for
+    division. Resolve killing last, so newly dead agents start with zero
+    elapsed time in this snapshot. Never mutate current_environment.
+    time_step is measured in seconds and must be finite and positive. Attack
+    cooldowns advance once per step, including while dividing or out of contact.
     """
-    if time_step <= 0:
-        raise ValueError("Time step must be positive.")
+    if not 0 < time_step < math.inf:
+        raise ValueError("Time step must be finite and positive.")
 
     from .interactions import detect_contacts, resolve_killing
 
@@ -281,6 +273,12 @@ def update_environment(
             time_step,
         )
 
+    clearance_time = next_environment.dead_cell_clearance_time
+    next_environment.bacteria = [
+        bacterium for bacterium in next_environment.bacteria
+        if not bacterium.advance_death_timer(time_step, clearance_time)
+    ]
+
     for bacterium in next_environment.bacteria:
         if not bacterium.alive:
             continue
@@ -288,8 +286,8 @@ def update_environment(
         num_competitor = count_neighbors(bacterium, next_environment, 2 * next_environment.contact_distance)
         update_energy(bacterium, time_step, num_competitor)
 
-        num_lysis = count_dead_neighbors(bacterium, next_environment, next_environment.contact_distance)
-        update_divide_state(bacterium, time_step, num_lysis)
+        dead_neighbors = count_dead_neighbors(bacterium, next_environment, next_environment.contact_distance)
+        update_divide_state(bacterium, time_step, dead_neighbors)
 
         if bacterium.is_division and bacterium.division_time <= 0:
             new_born.append(divide(bacterium, next_environment.width))

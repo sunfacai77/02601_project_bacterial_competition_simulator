@@ -55,7 +55,7 @@ Each person should add tests for their own part.
 
 - Positions, velocities, and accelerations are `OrderedPair` objects, accessed through `.x` and `.y`, as in both assignments. Dataclass vector and list fields use `default_factory` so agents do not share mutable defaults.
 - `bacteria_type` is either `"attacker"` or `"target"`. Every bacterium has an `alive` flag.
-- `Environment.bacteria` stores both living and dead bacteria. Dead bacteria remain available for bookkeeping but do not move or participate in contacts. The first renderer will draw living bacteria only.
+- `Environment.bacteria` stores living bacteria and recently dead cells. A cell stays stationary and appears gray from the snapshot in which it dies until its clearance time. It can delay nearby attacker division while present. Older snapshots retain the cell after it is cleared from new snapshots.
 - Motion follows the HW1 interfaces: compute new acceleration from the current environment; update velocity using the average of old and new acceleration, then limit speed; update position using old velocity and old acceleration. Save independent copies of those old vectors before assigning updates. Motion helpers return values for the caller to assign.
 - The surface is a square spanning `[0, width]` on both axes. `update_position` wraps coordinates around the boundaries, following Boids. `in_field` is the bounds-check interface from Barnes-Hut; it does not remove agents.
 - `proximity` is a neighborhood threshold for future movement rules. `contact_distance` is a separate bacterial interaction parameter. The Boids separation, alignment, and cohesion rules and the Barnes-Hut gravity/quadtree algorithm are not part of the initial bacterial model.
@@ -68,3 +68,5 @@ Each person should add tests for their own part.
 The signatures and docstrings in `src/` describe these interfaces.
 
 The example uses HW1 settings: `width=2000.0`, `max_bacterium_speed=120.0`, `proximity=300.0`, initial velocity components in `[-60, 60]`, `num_gens=200`, `time_step=0.1`, `canvas_width=600`, `drawing_frequency=2`, and video output at 30 fps. The split into 25 attackers and 25 targets, `contact_distance=10.0`, and `seed=42` are project demo choices. These numbers are a familiar debugging starting point; physical units and bacterial parameters still need to be chosen.
+
+`initialize_environment` accepts `dead_cell_clearance_time` in simulation seconds. The default of `1.0` removes a cell ten updates after death at `time_step=0.1`. This demo setting uses a seconds-scale approximation for rapid lysis. Single-cell imaging observed rapid rupture under osmotic shock, and bacterial competition experiments showed that lysis timing varies widely across conditions. [Reuter et al. (2014)](https://doi.org/10.1098/rsif.2013.0850), [Smith et al. (2020), Figure 2](https://doi.org/10.1371/journal.pbio.3000720.g002).

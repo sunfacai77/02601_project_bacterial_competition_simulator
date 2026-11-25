@@ -22,7 +22,7 @@ KILL_COST = 0.2
 
 def detect_contacts(environment: Environment) -> list[ContactPair]:
     """
-    Return unique living pairs within the threshold. Author/reviewer: TODO.
+    Return unique living pairs within the threshold.
 
     Use distance(b0.position, b1.position) <= environment.contact_distance.
     distance is the OrderedPair helper in bacterium.py, matching HW1.
@@ -83,12 +83,13 @@ def kill_target(attacker: Bacterium, target: Bacterium) -> None:
     target.integrity -= random.uniform(MIN_INTEGRITY_DAMAGE, MAX_INTEGRITY_DAMAGE)
     if target.integrity <= 0:
         target.alive = False
+        target.time_since_death = 0.0
 
 
 
 def resolve_killing(contacts: list[ContactPair]) -> None:
     """
-    Apply killing to eligible pairs in either order. Author/reviewer: TODO.
+    Apply killing to eligible pairs in either order.
 
     Pairs must refer to agents in the new environment, so killing cannot
     change any earlier snapshot in time_points.

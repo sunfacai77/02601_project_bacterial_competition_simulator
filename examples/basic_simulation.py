@@ -64,7 +64,7 @@ def main() -> None:
             
     print(f"Total bacteria: {len(final_environment.bacteria)}")
     print(f"Alive bacteria: {alive_bacteria}")
-    print(f"Dead bacteria: {dead_bacteria}")
+    print(f"Dead bacteria still present: {dead_bacteria}")
 
     # Same video-export step as HW1, using the rendered RGB arrays.
     import imageio.v2 as imageio
