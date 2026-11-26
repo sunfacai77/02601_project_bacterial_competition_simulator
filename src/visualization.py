@@ -46,14 +46,17 @@ def draw_to_canvas(environment: Environment, canvas_width: int) -> np.ndarray:
     if environment.slow_zone_radius > 0:
         scale = canvas_width / environment.width
         radius_px = max(1, round(environment.slow_zone_radius * scale))
-        
+        zone_layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        zone_color = (175, 195, 220, 72)
+
         for center in environment.slow_zone_centers():
             center_px = (
                 round(center.x * scale),
                 round(center.y * scale),
-                )
-            
-            pygame.draw.circle(surface, (175, 195, 220), center_px, radius_px, width=2)
+            )
+            pygame.draw.circle(zone_layer, zone_color, center_px, radius_px)
+
+        surface.blit(zone_layer, (0, 0))
 
     # Draw each bacterium in the environment.
     for bacterium in environment.bacteria:
